@@ -5,7 +5,7 @@ The C# [Mono.Options](https://www.nuget.org/packages/Mono.Options/) framework fo
 ## Installation
 
 ```shell
-npm install node.options
+npm install @koschel-christoph/node.options
 ```
 
 ## Using the library
@@ -17,7 +17,7 @@ To use the `Node.Options` library in your project, follow the steps below.
 First, import the `OptionSet` class from the library.
 
 ```typescript
-import {OptionSet} from "node.options";
+import {OptionSet} from "@koschel-christoph/node.options";
 ```
 
 ### Step 2: Define Variables
@@ -79,7 +79,7 @@ Here's the complete example code:
 
 ```typescript
 // index.js
-import {OptionSet} from "node.options";
+import {OptionSet} from "@koschel-christoph/node.options";
 
 const sources: string[] = [];
 let help: boolean = false;

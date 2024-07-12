@@ -1,5 +1,5 @@
 {
-    "name": "node.options",
+    "name": "@koschel-christoph/node.options",
     "version": "1.0.0",
     "description": "A flexible command-line options parser for Node.js applications, inspired by Mono.Options library.",
     "repository": "https://github.com/Christoph-Koschel/node.options",
