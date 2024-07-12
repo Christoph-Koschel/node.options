@@ -1,0 +1,30 @@
+{
+    "name": "node.options",
+    "version": "1.0.0",
+    "description": "A flexible command-line options parser for Node.js applications, inspired by Mono.Options library.",
+    "repository": "https://github.com/Christoph-Koschel/node.options",
+    "author": "Christoph Koschel",
+    "license": "MIT",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {},
+    "files": [
+        "/dist"
+    ],
+    "keywords": [
+        "command-line",
+        "options",
+        "parser",
+        "arguments",
+        "cli",
+        "utility",
+        "tool",
+        "parsing",
+        "flags",
+        "command",
+        "line"
+    ],
+    "dependencies": {
+        "@types/node": "^20.14.10"
+    }
+}
