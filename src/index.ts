@@ -177,6 +177,7 @@ export class OptionSet implements OptionSetOptions {
             args.shift();
             args.shift();
         }
+
         let restOption: Option<OptionType.REST> | undefined = this.options.find(option => option.type == OptionType.REST);
 
         outer:
@@ -206,7 +207,7 @@ export class OptionSet implements OptionSetOptions {
     }
 
     private formToKey(str: string): string {
-        let key: string = str;
+        let key: string = "";
         if (str.startsWith("--") && (this.strict && str.length > 3 || !this.strict)) {
             key = str.substring(2);
         }
