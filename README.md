@@ -169,6 +169,169 @@ The arguments can be one of four types:
     - **Invalid Example**: `["o=|option"]` (mixing a field and a flag)
     - **Invalid Example**: `["<>|sources"]` (mixing the rest operator with a regular option)
 
+## Sub Commands
+
+The `SubCommandSet` class can be used to defined sub commands in infinite depth.
+
+### Step 1: Import the Library
+
+First, import the `OptionSet` and `SubCommandSet` class from the library.
+
+```typescript
+import {OptionSet, SubCommandSet} from "@koschel-christoph/node.options";
+```
+
+### Step 2: Define default generator handler
+
+Define a default handler that is used when the sub command is not found or is not provided
+
+```typescript
+function* base(handler: SubCommandSet, commandNotFound: boolean): Generator<OptionSet> {
+
+}
+```
+
+### Step 3: Write OptionSet logic
+
+Inside the generator function we know write our normal OptionSet logic except of yield return the `OptionSet` before
+processing the result.
+
+```typescript
+function* base(handler: SubCommandSet, commandNotFound: boolean): Generator<OptionSet> {
+    let help: boolean = false;
+    const set: OptionSet = new OptionSet(
+        ["h|help", "Prints this help text", () => help = true]
+    );
+    yield set;
+
+    if (help) {
+        handler.printHelpString(process.stdout);
+    }
+}
+```
+
+Everything before the yield can be seen as the setup phase. When the set is yield the SubCommandSet calls the
+`OptionSet.parse` function and then continues the generator function.
+
+### Step 4: Define sub command handler
+
+Now the actual sub command handler must be defined this is also a generator function that returns either a `OptionSet`
+or a `SubCommandSet` for nested sub commands.
+
+```typescript
+function* mySubCommand(handler: SubCommandSet): Generator<OptionSet | SubCommandSet> {
+}
+```
+
+### Step 5: Write OptionSet or SubCommandSet logic
+
+Inside the handler we write the logic of the sub command for `SubCommandSet` it is like going back to step 2.
+
+```typescript
+function* mySubCommand(handler: SubCommandSet): Generator<OptionSet | SubCommandSet> {
+    let help: boolean = false;
+    const set: OptionSet = new OptionSet(
+        "Usage: mycommand subcommand [<option>]",
+        ["h|help", "Prints this help text", () => help = true]
+    );
+    yield set;
+
+    if (help) {
+        set.printHelpString(process.stdout);
+    }
+}
+```
+
+### Step 6: Combine all functions
+
+Now the only major thing is to bring all functions together. Therefore, we construct a `SubCommandSet` class.
+
+```typescript
+const set: SubCommandSet = new SubCommandSet(
+    "Usage: mycommand [<subcommand>] [<option>]",
+    base,
+    ["subcommand", "A subcommands description", mySubCommand]
+);
+```
+
+### Step 7: Parse Command-Line Arguments
+
+Lastly we only need to parse our command arguments
+
+```typescript
+set.parse(process.argv);
+```
+
+### Complete Example
+
+Here's the complete example code:
+
+```typescript
+import {OptionSet, SubCommandSet} from "@koschel-christoph/node.options";
+
+function* base(handler: SubCommandSet, commandNotFound: boolean): Generator<OptionSet> {
+    let help: boolean = false;
+    const set: OptionSet = new OptionSet(
+        ["h|help", "Prints this help text", () => help = true]
+    );
+    yield set;
+
+    if (help) {
+        handler.printHelpString(process.stdout);
+    }
+}
+
+function* mySubCommand(handler: SubCommandSet): Generator<OptionSet | SubCommandSet> {
+    let help: boolean = false;
+    const set: OptionSet = new OptionSet(
+        "Usage: mycommand subcommand [<option>]",
+        ["h|help", "Prints this help text", () => help = true]
+    );
+    yield set;
+
+    if (help) {
+        set.printHelpString(process.stdout);
+    }
+}
+
+const set: SubCommandSet = new SubCommandSet(
+    "Usage: mycommand [<subcommand>] [<option>]",
+    base,
+    ["subcommand", "A subcommands description", mySubCommand]
+);
+
+set.parse(process.argv);
+```
+
+## Detailed SubCommandSet Constructor
+
+The `SubCommandSet` constructor takes a variable number of arguments, each of which defines a sub command, the base
+handler or the usage message. The arguments can be one of four types:
+
+1. **Usage Message** (`SubCommandUsageArgument`)
+2. **Base Handler** (`SubCommandBaseArgument`)
+3. **Command Handler** (`SubCommandCommandArgument`)
+
+### Usage Message
+
+- **Type**: `SubCommandUsageArgument`
+- **Format**: A single string that describes how to use the command-line tool.
+- **Example**: `Usage: mytool <sources> [options]`
+
+### Base Handler
+
+- **Type**: `SubCommandBaseArgument`
+- **Format**: A JavaScript generator function which returns a `Generator<OptionSet>` type.
+
+### Command Handler
+
+- **Type**: `SubCommandCommandArgument`
+- **Format**: `[command, description, handler]`
+- **Command**: A string containing the name of the sub command.
+- **Description**: A string describing the sub command.
+- **Handler**: A JavaScript generator function which returns a `Generator<OptionSet | SubCommandSet>` type.
+- **Example**: `["mySubCommand", "My sub command doing smth.", myHanlder]`
+
 ## Configuration Flags
 
 The `Node.Options` library includes two configuration flags that control how command-line options are parsed: `strict`
@@ -219,12 +382,14 @@ option.parse(process.argv);
 // Result: `-output` is accepted as a valid flag and `output` is set to "out.txt"
 ```
 
-### OptionSet.caseSensitive
+### OptionSet.caseSensitive / SubCommandSet.caseSensitive
 
 - **Default Value**: true
-- **Description**: When `caseSensitive` is enabled, the keys for options are case-sensitive. This means that `--Output`
-  and `--output` would be considered different options. When caseSensitive is disabled, the comparison is case-insensitive,
-  treating `--Output` and `--output` as the same option.
+- **Description**: When `caseSensitive` is enabled, the keys for options or sub commands are case-sensitive. This means
+  that `--Output`
+  and `--output` would be considered different options. When caseSensitive is disabled, the comparison is
+  case-insensitive, treating `--Output` and `--output` as the same option. The same rule applies to sub commands where
+  `subCommand` and `subcommand` are treated as the same command.
 
 #### Example with caseSensitive enabled (default)
 
@@ -290,9 +455,3 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
-
-### Summary
-
-The MIT License is a permissive free software license that puts very few restrictions on reuse. This allows for maximum
-freedom in the use of the `Node.Options` library, making it suitable for both open-source and proprietary projects. When
-using this library, ensure to include the above license text in all copies or substantial portions of the Software.

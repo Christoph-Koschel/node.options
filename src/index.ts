@@ -232,3 +232,105 @@ export class OptionSet implements OptionSetOptions {
         });
     }
 }
+
+type SubCommandUsageArgument = string;
+type SubCommandBaseArgument = (handler: SubCommandSet, commandNotFound: boolean) => Generator<OptionSet>;
+type SubCommandCommandArgument = [string, string, (handler: SubCommandSet) => Generator<OptionSet | SubCommandSet>];
+
+type SubCommandSetConstructor = SubCommandUsageArgument | SubCommandBaseArgument | SubCommandCommandArgument;
+
+export class SubCommandSet {
+    private usageString: string | null;
+    private baseHandler: ((handler: SubCommandSet, commandNotFound: boolean) => Generator<OptionSet>) | null;
+    private commands: Map<string, [string, (handler: SubCommandSet) => Generator<OptionSet | SubCommandSet>]>;
+    private caseSensitive: boolean;
+
+    public constructor(...handlers: SubCommandSetConstructor[]) {
+        this.usageString = null;
+        this.baseHandler = null;
+        this.commands = new Map();
+        this.caseSensitive = true;
+
+        for (const handler of handlers) {
+            if (typeof handler === "string") {
+                this.usageString = handler;
+                continue;
+            }
+            if (typeof handler === "function") {
+                this.baseHandler = handler;
+                continue;
+            }
+            if (this.commands.has(handler[0])) {
+                throw `A sub command with the name '${handler[0]}' already exist`;
+            }
+            this.commands.set(handler[0], [handler[1], handler[2]]);
+        }
+    }
+
+    public parse(args: string[], shiftFirstTwo: boolean = true): void {
+        if (shiftFirstTwo) {
+            args.shift();
+            args.shift();
+        }
+
+        const command: string | undefined = args[0];
+        if (!command) {
+            this.executeBaseHandler(args, false);
+            return;
+        }
+
+        if (this.commands.has(command) || (!this.caseSensitive && this.commands.has(command.toLowerCase()))) {
+            args.shift();
+            let wrap: [string, (handler: SubCommandSet) => Generator<OptionSet | SubCommandSet>] = this.commands.get(command);
+            if (!this.caseSensitive && !wrap) {
+                wrap = this.commands.get(command.toLowerCase())!;
+            }
+            const [_, handlerFunc] = wrap;
+
+            const generator: Generator<OptionSet | SubCommandSet> = handlerFunc(this);
+            const handler: OptionSet | SubCommandSet | undefined = generator.next().value;
+            if (!handler || !(handler instanceof SubCommandSet) && !(handler instanceof OptionSet)) {
+                throw "Function did not return a OptionSet or SubCommandSet";
+            }
+            handler.parse(args, false);
+            generator.next();
+            return;
+        }
+
+        this.executeBaseHandler(args, true);
+    }
+
+    private executeBaseHandler(args: string[], commandNotFound: boolean): void {
+        if (this.baseHandler) {
+            const generator: Generator<OptionSet> = this.baseHandler(this, commandNotFound);
+            const handler: OptionSet | undefined = generator.next().value;
+            if (!handler || !(handler instanceof OptionSet)) {
+                throw "Function did not return a OptionSet";
+            }
+            handler.parse(args, false);
+            generator.next();
+        }
+    }
+
+    public printHelpString(stream: fs.WriteStream | NodeJS.WriteStream): void {
+        if (this.usageString != null) {
+            stream.write(this.usageString + "\n");
+        }
+
+        stream.write("\n");
+        stream.write("Commands:\n");
+        for (let [key, [description]] of this.commands.entries()) {
+            stream.write("  ");
+            const keyStringPadded = key.padEnd(29);
+            stream.write(keyStringPadded);
+            if (keyStringPadded == key) {
+                stream.write("\n");
+                stream.write("".padEnd(29));
+            } else {
+                stream.write(" ");
+            }
+            stream.write(description);
+            stream.write("\n");
+        }
+    }
+}
